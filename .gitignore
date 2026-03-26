@@ -1,0 +1,8 @@
+*.env
+*.swp
+*__pycache__
+
+**/._.DS_Store
+**/.DS_Store
+
+/data

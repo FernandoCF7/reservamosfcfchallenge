@@ -1,0 +1,38 @@
+El presente documento contiene los prompts más relevantes ejecutados en ChatGPT como apoyo para construir el proyecto:
+
+Quiero validar un campo dentro de la columna 'properties' de tipo 'dict'. Dicho campo puedo, o no estar presente en cada registro. El campo a validar es 'phone', se que una forma de hacerlo es con un ciclo que itere sobre el dataframe (sobre la columna 'properties'), sin embargo, este proceso puede tonarse muy ineficient, sobre todo cuando la cantidad de registros es muy alta, que otras alternativas existen?
+-------------
+
+ok, esta expresión regular, sólo valida que sean 10 números, crees deba hacerse más robusta?
+-------------
+
+en esta parte, cómo dejar para que acepte valores de 10 o 12 dígitos, ya que no quiero restringir sólo a 52 al inicio, pues puede ser de otro país
+-------------
+
+esto me deja con el único problema que si existiera la llave telefono y tenía valor "" entonces sí la deja, cuando debería quitar el registro porque "" es un teléfno no valildo
+-------------
+
+no quiero usar lambda, hay alguna manera de verificar si existe el campo sin usar lambad, ojo, considera que el json original también puede tener valores como: "phone": null ya lo verifiqué en python y al hacer df_data["properties"].str.get("phone") lo carga como None
+-------------
+
+ok, lo voy a hacer en postgres, para ello tengo este compose:
+
+services: backend:
+build: ./backend
+...
+
+El Dockerfile que está en la carpteta code es:
+FROM python:3.10-slim WORKDIR /app COPY requirements.txt .
+
+Revisa la correcta integración entre el docker-compose y el Dockerfile
+-------------
+
+ok, la tabla de postgres no existe al levantar el contenedor, cómo abordamos eso?
+-------------
+
+Error: (psycopg2.OperationalError) connection to server at "db" (172.21.0.2), port 5432 failed: FATAL: password authentication failed for user "None" (Background on this error at: https://sqlalche.me/e/20/e3q8) Esperando conexión a DB...
+-------------
+
+hazme la parte del readme de : ## 3. Consulta API: FastAPI breve directa, que se usó, porqué y como utilizarlo
+-------------
+
