@@ -1,56 +1,6 @@
-import os
-import time
-import json
 import pandas as pd
-from sqlalchemy import create_engine
 
-# --- db conection --- #
-def make_db_connection(): 
-
-    DB_USER = os.getenv("DB_USER")
-    DB_PASSWORD = os.getenv("DB_PASSWORD")
-    DB_HOST = os.getenv("DB_HOST")
-    DB_NAME = os.getenv("DB_NAME")
-
-    # Create db-engine
-    return create_engine(
-        f"postgresql+psycopg2://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:5432/{DB_NAME}"
-    )
-# ---------------- #
-
-# --- waiting for db --- #
-def waiting_for_db(engine, retries=10, delay=3):
-    for tmp in range(retries):
-        try:
-            with engine.connect():
-                print("Conexión exitosa")
-                return
-        except Exception as e:
-            print(f"Error: {e}")
-            print("Esperando conexión a DB...")
-            time.sleep(delay)
-    raise Exception("Error: Conexión a DB NO exitosa")
-# ---------------- #
-
-# --- data ingestion --- #
-def ingestion(path):
-
-    with open(path, "r", encoding="utf-8") as f:
-        json_data = json.load(f)
-
-    return  pd.DataFrame(json_data) # --> Use pandas dataFrame
-# ---------------- #
-
-# --- Visualize the information --- #
-def preview(df_data):
-    print("The json information has been loaded as pandas dataFrame:\n")
-    print(f"{df_data.info()}2*\n")
-    print("First 4 registers:\n")
-    print(df_data.head(4))
-# ---------------- #
-
-# --- CHALLENGE --- #
-def challenge(df_data):
+def transform(df_data: pd.DataFrame) -> pd.DataFrame:
 
     # --- Part 1 --- #
     # Construye un proceso que rechace eventos inválidos:
@@ -192,41 +142,6 @@ def challenge(df_data):
         "total_purchased_amount"
     ]
 
+    print(f"[TRANSFORM] Generated {len(df_table)} rows")
+
     return df_table
-# ---------------- #
-
-# --- Load --- #
-def load(df, engine):
-    df.to_sql(
-        "metrics_daily",
-        engine,
-        if_exists="replace",
-        index=False
-    )
-    print("Carga exitosa en la DB")
-# ---------------- #
-
-# --- main --- #
-def main():
-    # db connection
-    engine = make_db_connection()
-    waiting_for_db(engine)
-
-    # ingestion
-    current_path = os.path.dirname(os.path.abspath(__file__))
-    json_data_path = os.path.join(current_path, 'source', 'events.json')
-
-    df_data = ingestion(json_data_path)
-
-    # data pre-visualization
-    preview(df_data)
-
-    # transformation
-    df_result = challenge(df_data)
-
-    # load
-    load(df_result, engine)
-# ---------------- #
-
-if __name__ == "__main__":
-    main()

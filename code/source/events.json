@@ -1,7 +1,7 @@
 [
   {
     "event": "search",
-    "user_id": "0",
+    "user_id": "100",
     "timestamp": "2025-01-15T08:00:00Z",
     "properties": {
       "origin": "CDMX",

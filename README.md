@@ -11,20 +11,26 @@ El presente documento contiene las instrucciones para generar la infraestructura
 
 ### Estructura del proyecto:
 ```
-.
+├── airflow/
+│   ├── dags/
+│   │   └── etl_pipeline_dag.py
+│   ├── logs/
+│   └── plugins/
 ├── code/
-│   ├── main.py          # ETL pipeline
-│   ├── api.py           # REST API
-│   ├── source/
-|   |   └── events.json  # Input data 
-│   |── requirements.txt
-│   └── Dockerfile
+│   ├── etl/
+│   │   ├── __init__.py
+│   │   ├── extract.py
+│   │   ├── transform.py
+│   │   └── load.py
+│   ├── __init__.py
+│   ├── api.py
+│   └── source/
+│       └── events.json
 ├── data/
-│   └── ...              # Posstgresql data 
 ├── .env
-├── compose.yml          # Docker compose
-├── README.md
-└── prompts_AI_usados.txt
+├── compose.yml
+├── requirements.txt
+└── README.md
 ```
 
 ## 1. Construir la infraestructura
@@ -41,24 +47,39 @@ La infraestructura del proyecto se construye con Docker (docker-compose).
 
 Nota: Para mantener la escalabilidad se optó por utilizar contenedores individuales para la lógica (python-backen) y la base de datos (Postgresql) del sistema. Por otra parte, se decició 'montar' volumenes para el backend y base de datos, para preservar el acceso y gobernanza del proceso y de la información.
 
+Otorgue permisos a la ruta del log de airflow (a Docker)
+```
+mkdir -p airflow/logs
+sudo chown -R $USER:$USER airflow/logs
+```
+
 Ejecute la siguiente sentencia en el directorio raíz del proyecto para 'levantar' su infraestructura
 
 ```
-docker compose -p reservamos up -d 
-
+docker compose up db -d
+docker compose run airflow-init
+docker compose up
 ```
 
-Nota: en este caso el proyecto se ha nombrado 'reservamos'. Puede cambiar dicho nombre sí así lo desea, en cuyo caso la sentencia quedaría así:
-
-
-
+Si ya tienes el proyecto previamente y deseas iniciar desde cero (Cuidado, borrará la base de datos):
 ```
-docker compose -p nombreDelContenedor up -d 
+docker compose down
+sudo rm -R data
+sudo rm -R airflow/logs
+docker compose up db -d
+docker compose run airflow-init
+docker compose up
 
+chmod -R 777 airflow/logs
+sudo chown -R $USER:$USER airflow/logs
 ```
 
 Nota: para la parte del contenedor python (pyback) el archivo compose toma en cuenta la creación automática de los módulos que el programa necesita (ejecuta en automático el archivo 'requirements.txt'; así, no es necesario realizar configuración alguna)
 
+
+## 2. Ejecutar airflow desde el sitio web
+
+http://localhost:8080
 
 
 ## 2. Ejecutar pipeline de datos
