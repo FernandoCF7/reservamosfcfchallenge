@@ -1,15 +1,27 @@
 # Instructivo para ejecutar el proyecto: Challenge — Data engineer (Mid Level)
 
-## Descripción general
+## 🧩 Descripción general
 
-El presente documento contiene las instrucciones para generar la infraestructura (Docker) y ejecutar el proceso para cumplir el 'Challenge — Data engineer (Mid Level)'
+Este proyecto implementa un pipeline de datos completo utilizando:
 
-### Etapas:
-- Construir la infraestructura
-- Ejecutar pipeline de datos
-- Consulta API: FastAPI
+- **Airflow** → Orquestación del pipeline ETL  
+- **Python (ETL)** → Extracción, transformación y carga  
+- **PostgreSQL** → Almacenamiento  
+- **Django** → Backend + UI de monitoreo (tipo CETCIN)  
+- **Docker** → Infraestructura reproducible  
 
-### Estructura del proyecto:
+---
+
+## 🚀 Etapas del proyecto
+
+1. Construcción de infraestructura (Docker)
+2. Ejecución del pipeline de datos (Airflow)
+3. Monitoreo del pipeline (Django UI)
+
+---
+
+## 📁 Estructura del proyecto
+
 ```
 ├── airflow/
 │   ├── dags/
@@ -28,53 +40,261 @@ El presente documento contiene las instrucciones para generar la infraestructura
 │       └── events.json
 ├── data/
 ├── .env
-├── compose.yml
+├── docker-compose.yml
 ├── requirements.txt
 └── README.md
 ```
 
-## 1. Construir la infraestructura
+---
 
-### Notas relacionadas al versionado
+## ⚠️ Notas de versionado
 
-Warnign: Se ha decidido no incluir el archivo .env en el archivo .gitignore, pese a que esto en un entorno 'productivo' nunca debe realizarse. Sin embargo, y considerando que no se está manejando información sensible, se tomó está decición para mantener el proceso de creación de infraestructura y ejecución del proceso lo más transarente y directo al usuario.
+- `.env` **sí está versionado** (solo para fines de prueba, sin datos sensibles)
+- `data/` **NO se versiona** (volumen de PostgreSQL)
 
-Se ha decidido no incluir al repositorio la ruta ./data debido a que es el volumen donde se monto la base de datos (Postgres), ello conllevaría a tener un reposositorio inecesariamente grande.
+---
 
-### Infraestructura con Docker
 
-La infraestructura del proyecto se construye con Docker (docker-compose).
+## 🐳 1. Construcción de infraestructura
 
-Nota: Para mantener la escalabilidad se optó por utilizar contenedores individuales para la lógica (python-backen) y la base de datos (Postgresql) del sistema. Por otra parte, se decició 'montar' volumenes para el backend y base de datos, para preservar el acceso y gobernanza del proceso y de la información.
+### 🔹 Levantar el entorno
 
-Otorgue permisos a la ruta del log de airflow (a Docker)
-```
-mkdir -p airflow/logs
-sudo chown -R $USER:$USER airflow/logs
-```
-
-Ejecute la siguiente sentencia en el directorio raíz del proyecto para 'levantar' su infraestructura
-
-```
-docker compose up db -d
-docker compose run airflow-init
-docker compose up
-```
-
-Si ya tienes el proyecto previamente y deseas iniciar desde cero (Cuidado, borrará la base de datos):
-```
+```bash
 docker compose down
-sudo rm -R data
-sudo rm -R airflow/logs
+docker compose build --no-cache
+rm -rf data
 docker compose up db -d
 docker compose run airflow-init
-docker compose up
-
-chmod -R 777 airflow/logs
-sudo chown -R $USER:$USER airflow/logs
+docker compose up -d
 ```
 
-Nota: para la parte del contenedor python (pyback) el archivo compose toma en cuenta la creación automática de los módulos que el programa necesita (ejecuta en automático el archivo 'requirements.txt'; así, no es necesario realizar configuración alguna)
+---
+
+
+
+### 🧠 Arquitectura
+
+Cada componente corre en su propio contenedor:
+
+- `db` → PostgreSQL  
+- `etl` → lógica Python  
+- `airflow-*` → orquestación  
+- `django-backend` → UI + API  
+
+---
+
+## 🧱 2. Configuración de Django
+
+### 🔹 Crear proyecto (solo la primera vez)
+
+```bash
+docker compose run --rm django-backend bash
+```
+
+Dentro del contenedor:
+
+```bash
+django-admin startproject config .
+exit
+```
+
+Reconstruir imagen:
+
+```bash
+docker compose build django-backend
+docker compose up django-backend -d
+```
+
+---
+
+## 🧩 3. Crear app de monitoreo
+
+```bash
+docker compose exec django-backend python manage.py startapp monitor
+```
+
+---
+
+### 🔹 Registrar app
+
+En `config/settings.py`:
+
+```python
+INSTALLED_APPS = [
+    ...
+    'monitor',
+]
+```
+
+---
+
+### 🔹 Vista básica
+
+`monitor/views.py`
+
+```python
+from django.http import HttpResponse
+
+def home(request):
+    return HttpResponse("Monitor ETL funcionando 🚀")
+```
+
+---
+
+### 🔹 URLs
+
+`monitor/urls.py`
+
+```python
+from django.urls import path
+from .views import home
+
+urlpatterns = [
+    path('', home),
+]
+```
+
+`config/urls.py`
+
+```python
+from django.contrib import admin
+from django.urls import path, include
+
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('', include('monitor.urls')),
+]
+```
+
+---
+
+## 🗄️ 4. Conexión a PostgreSQL
+
+En `config/settings.py`:
+
+```python
+import os
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.getenv('DB_NAME'),
+        'USER': os.getenv('DB_USER'),
+        'PASSWORD': os.getenv('DB_PASSWORD'),
+        'HOST': os.getenv('DB_HOST'),
+        'PORT': '5432',
+        'OPTIONS': {
+            'options': f"-c search_path={os.getenv('DB_SCHEMA')}"
+        }
+    }
+}
+```
+
+---
+
+### 🔹 Migraciones
+
+```bash
+docker compose exec django-backend python manage.py migrate
+```
+
+---
+
+## 🌐 5. Probar aplicación
+
+```bash
+docker compose restart django-backend
+```
+
+Abrir en navegador:
+
+```
+http://localhost:8000
+```
+
+---
+
+## 📊 6. Modelo de monitoreo
+
+Ejemplo: `PipelineRun`
+
+Después de definir modelos:
+
+```bash
+docker compose exec django-backend python manage.py makemigrations
+docker compose exec django-backend python manage.py migrate
+```
+
+---
+
+### 🔹 Admin Django
+
+`monitor/admin.py`
+
+```python
+from django.contrib import admin
+from .models import PipelineRun
+
+admin.site.register(PipelineRun)
+```
+
+Crear superusuario:
+
+```bash
+docker compose exec django-backend python manage.py createsuperuser
+```
+
+appuser
+123f
+
+---
+
+## 🖥️ 7. UI tipo dashboard (CETCIN básico)
+
+Crear template:
+
+```
+monitor/templates/monitor/dashboard.html
+```
+
+Actualizar vista para usar HTML.
+
+---
+
+## 🔁 8. Levantar servicios
+
+```bash
+docker compose up -d
+```
+
+👉 Esto **NO recrea el proyecto**, solo levanta contenedores existentes.
+
+---
+
+## 🧠 Notas importantes
+
+- Airflow maneja ejecución del pipeline  
+- Django actúa como:
+  - UI de monitoreo
+  - Control manual de ejecuciones  
+- PostgreSQL usa múltiples schemas:
+  - `airflow`
+  - `analytics`
+  - `backend` (Django)
+
+---
+
+
+ejecutar el dag desde consola (ejecutar airflow con su API)
+curl -X POST "http://localhost:8080/api/v1/dags/etl_pipeline/dagRuns" \
+  -u "airflow:airflow" \
+  -H "Content-Type: application/json" \
+  -d '{}'
+
+
+
+
+
 
 
 ## 2. Ejecutar airflow desde el sitio web

@@ -37,7 +37,7 @@
   },
   {
     "event": "search",
-    "user_id": "2",
+    "user_id": "400",
     "timestamp": "2025-01-15T10:00:00Z",
     "properties": {
       "phone": "",

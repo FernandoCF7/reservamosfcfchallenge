@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+
+    <head>
+        <title>ETL Monitor</title>
+        <style>
+            .success {
+                color: #16a34a; /* verde elegante */
+                font-weight: 600;
+            }
+
+            .failed {
+                color: #dc2626;
+                font-weight: 600;
+            }
+
+            .running {
+                color: #f59e0b;
+                font-weight: 600;
+            }
+
+            .queued {
+                color: #6b7280;
+            }
+
+            button:disabled {
+                background-color: #ccc;
+                cursor: not-allowed;
+            }
+        </style>
+    </head>
+
+    <body>
+    
+        <h1>🚀 Monitor ETL</h1>
+        
+        <form method="post" action="{% url 'run_pipeline' %}">
+            {% csrf_token %}
+            <button id="run-btn" type="submit">
+                ▶ Ejecutar pipeline
+            </button>
+        </form>
+
+        <div id="loader" style="display:none;">
+            🔄 Ejecutando pipeline...
+        </div>
+
+        <hr>
+
+        <table border="1">
+            <tr>
+                <th>ID</th>
+                <th>Status</th>
+                <th>Inicio</th>
+            </tr>
+        
+            {% for run in runs %}
+            <tr>
+                <td>
+                    <a href="/run/{{ run.dag_run_id }}/">
+                        {{ run.dag_run_id }}
+                    </a>
+                </td>
+                <td id="status-{{ run.dag_run_id }}" class="{{ run.status }}">
+                    {{ run.status|upper }}
+                </td>
+                <td>{{ run.created_at }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+
+        <script>
+            function updateStatus(dagRunId) {
+                fetch(`/status/${dagRunId}/`)
+                    .then(res => res.json())
+                    .then(data => {
+                        let el = document.getElementById(`status-${dagRunId}`);
+                        let state = data.state;
+                    
+                        el.className = state;
+
+                        if (state === "success") {
+                            el.innerHTML = "SUCCESS";
+                        } else if (state === "failed") {
+                            el.innerHTML = "FAILED";
+                        } else if (state === "running") {
+                            el.innerHTML = "RUNNING";
+                        } else {
+                            el.innerHTML = state.toUpperCase();
+                        }
+                    
+                    });
+            }
+        
+            // auto-refresh cada 5 segundos
+            setInterval(() => {
+                document.querySelectorAll("[id^='status-']").forEach(el => {
+                    let dagRunId = el.id.replace("status-", "");
+                    updateStatus(dagRunId);
+                });
+            
+                updateButtonState(); // 👈 IMPORTANTE
+            }, 5000);
+        
+            const form = document.querySelector("form");
+            const loader = document.getElementById("loader");
+        
+            form.addEventListener("submit", function() {
+                loader.style.display = "block";
+            });
+        
+            function updateButtonState() {
+                const btn = document.getElementById("run-btn");
+            
+                let running = false;
+            
+                document.querySelectorAll("[id^='status-']").forEach(el => {
+                    if (el.className === "running") {
+                        running = true;
+                    }
+                });
+            
+                if (running) {
+                    btn.disabled = true;
+                    btn.innerText = "⏳ Ejecutando...";
+                } else {
+                    btn.disabled = false;
+                    btn.innerText = "▶ Ejecutar pipeline";
+                }
+            }
+        
+        </script>
+
+    </body>
+</html>

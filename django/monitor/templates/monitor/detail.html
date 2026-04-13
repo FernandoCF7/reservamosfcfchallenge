@@ -1,0 +1,34 @@
+<h1>📊 Detalle del Pipeline</h1>
+
+<p><strong>DAG:</strong> {{ run.dag_id }}</p>
+<p><strong>Run ID:</strong> {{ run.dag_run_id }}</p>
+<p><strong>Status:</strong> {{ dag_info.state }}</p>
+<p><strong>Inicio:</strong> {{ dag_info.start_date }}</p>
+<p><strong>Fin:</strong> {{ dag_info.end_date }}</p>
+
+<hr>
+
+<h2>🧩 Tasks</h2>
+
+<table border="1">
+    <tr>
+        <th>Task</th>
+        <th>Status</th>
+        <th>Logs</th>
+    </tr>
+
+    {% for task in tasks %}
+    <tr>
+        <td>{{ task.task_id }}</td>
+        <td>{{ task.state }}</td>
+        <td>
+            <a href="/log/{{ run.dag_run_id }}/{{ task.task_id }}/">
+                Ver log
+            </a>
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+
+<br>
+<a href="/">⬅ Volver</a>

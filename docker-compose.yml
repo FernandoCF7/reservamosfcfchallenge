@@ -1,10 +1,8 @@
 services:
 
-  backend:
+  etl:
     build: ./code
-    container_name: pyback
-    ports:
-      - "8000:8000"
+    container_name: pyetl
     depends_on:
       - db
     environment:
@@ -15,6 +13,24 @@ services:
       DB_SCHEMA: ${PROJECT_POSTGRES_SCHEMA}
     volumes:
       - ./code/:/app
+    restart: unless-stopped
+
+  django-backend:
+    build: ./django
+    container_name: djbackend
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - airflow-webserver
+    environment:
+      DB_HOST: ${PROJECT_POSTGRES_HOST}
+      DB_NAME: ${PROJECT_POSTGRES_DB}
+      DB_USER: ${PROJECT_POSTGRES_USER}
+      DB_PASSWORD: ${PROJECT_POSTGRES_PASSWORD}
+      DB_SCHEMA: ${DJANGO_POSTGRES_SCHEMA}
+    volumes:
+      - ./django:/app
     restart: unless-stopped
 
   db:
@@ -42,6 +58,7 @@ services:
       AIRFLOW__CORE__FERNET_KEY: ''
       AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
       AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_SECRET_KEY}
+      AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_POSTGRES_USER}:${AIRFLOW_POSTGRES_PASSWORD}@pgdb:5432/${AIRFLOW_POSTGRES_DB}?options=-csearch_path=${AIRFLOW_POSTGRES_SCHEMA}
       DB_HOST: ${PROJECT_POSTGRES_HOST}
       DB_USER: ${PROJECT_POSTGRES_USER}
@@ -59,11 +76,13 @@ services:
   airflow-init:
     image: apache/airflow:2.9.1
     container_name: airflow-init
+    user: "0:0"
     depends_on:
       - db
     environment:
       AIRFLOW__CORE__EXECUTOR: SequentialExecutor
       AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_SECRET_KEY}
+      AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_POSTGRES_USER}:${AIRFLOW_POSTGRES_PASSWORD}@pgdb:5432/${AIRFLOW_POSTGRES_DB}?options=-csearch_path=${AIRFLOW_POSTGRES_SCHEMA}
       DB_HOST: ${PROJECT_POSTGRES_HOST}
       DB_USER: ${PROJECT_POSTGRES_USER}
@@ -71,11 +90,15 @@ services:
       DB_NAME: ${PROJECT_POSTGRES_DB}
       DB_SCHEMA: ${PROJECT_POSTGRES_SCHEMA}
     volumes:
+      - ./airflow/logs:/opt/airflow/logs
       - ./airflow/dags:/opt/airflow/dags
-      - ./code:/opt/airflow/code
     entrypoint: /bin/bash
     command: >
       -c "
+      echo 'Cleaning logs...' &&
+      rm -rf /opt/airflow/logs/* &&
+      mkdir -p /opt/airflow/logs &&
+      chmod -R 777 /opt/airflow/logs &&
       echo 'Waiting for DB...' &&
       sleep 5 &&
       airflow db migrate &&
@@ -91,6 +114,7 @@ services:
     environment:
       AIRFLOW__CORE__EXECUTOR: SequentialExecutor
       AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_SECRET_KEY}
+      AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_POSTGRES_USER}:${AIRFLOW_POSTGRES_PASSWORD}@pgdb:5432/${AIRFLOW_POSTGRES_DB}?options=-csearch_path=${AIRFLOW_POSTGRES_SCHEMA}
       DB_HOST: ${PROJECT_POSTGRES_HOST}
       DB_USER: ${PROJECT_POSTGRES_USER}
