@@ -1,0 +1,26 @@
+[
+    {
+        "customer_id": "C001",
+        "name": "Juan Pérez",
+        "segment": "Retail",
+        "region": "NORTE"
+    },
+    {
+        "customer_id": "C002",
+        "name": "Ana Gómez",
+        "segment": "Corporate",
+        "region": "NORTE"
+    },
+    {
+        "customer_id": "C003",
+        "name": "Luis Torres",
+        "segment": "Retail",
+        "region": "NORTE"
+    },
+    {
+        "customer_id": "C004",
+        "name": "María López",
+        "segment": "SMB",
+        "region": "NORTE"
+    }
+]

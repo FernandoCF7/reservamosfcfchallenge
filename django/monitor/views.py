@@ -11,7 +11,9 @@ def dashboard(request):
     return render(request, "monitor/dashboard.html", {"runs": runs})
 
 def run_pipeline(request):
+
     if request.method == "POST":
+
         response = requests.post(
             "http://airflow-webserver:8080/api/v1/dags/etl_pipeline/dagRuns",
             auth=(settings.AIRFLOW_USER, settings.AIRFLOW_PASSWORD),
@@ -27,32 +29,6 @@ def run_pipeline(request):
         )
 
     return redirect("dashboard")
-
-def get_status(request, dag_run_id):
-    url = f"http://airflow-webserver:8080/api/v1/dags/etl_pipeline/dagRuns/{dag_run_id}"
-
-    response = requests.get(
-        url,
-        auth=(settings.AIRFLOW_USER, settings.AIRFLOW_PASSWORD)
-    )
-
-    data = response.json()
-    state = data.get("state")
-
-    # UPDATE BD
-    try:
-        run = PipelineRun.objects.get(dag_run_id=dag_run_id)
-        run.status = state
-
-        if state in ["success", "failed"]:
-            from django.utils import timezone
-            run.finished_at = timezone.now()
-
-        run.save()
-    except PipelineRun.DoesNotExist:
-        pass
-
-    return JsonResponse(data)
 
 def run_detail(request, dag_run_id):
     run = PipelineRun.objects.get(dag_run_id=dag_run_id)
@@ -95,3 +71,25 @@ def log_view(request, dag_run_id, task_id):
         return HttpResponse(f"<pre>{response.text}</pre>")
     
     return HttpResponse("No se pudo obtener log")
+
+def get_status(request, dag_run_id):
+    try:
+        run = PipelineRun.objects.filter(dag_run_id=dag_run_id).first()
+
+        if not run:
+            return JsonResponse({
+                "status": "not_found",
+                "progress": 0
+            })
+
+        return JsonResponse({
+            "status": run.status,
+            "progress": run.progress or 0
+        })
+
+    except Exception as e:
+        print("🔥 ERROR EN get_status:", str(e))  # 👈 clave
+        return JsonResponse({
+            "status": "error",
+            "progress": 0
+        })

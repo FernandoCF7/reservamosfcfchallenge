@@ -9,6 +9,7 @@ class PipelineRun(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     finished_at = models.DateTimeField(null=True, blank=True)
     message = models.TextField(null=True, blank=True)
+    progress = models.IntegerField(default=0)
 
     def __str__(self):
-        return f"{self.dag_id} | {self.dag_run_id} | {self.status}"
+        return f"{self.dag_id} | {self.dag_run_id} | {self.status} | {self.progress}"

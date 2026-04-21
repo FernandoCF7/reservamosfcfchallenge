@@ -61,11 +61,17 @@ Este proyecto implementa un pipeline de datos completo utilizando:
 
 ```bash
 docker compose down
+(opcional, borrado fuerte (excepto las carpetas locales)) docker compose down -v --remove-orphans
 docker compose build --no-cache
-rm -rf data
+sudo rm -rf data
 docker compose up db -d
 docker compose run airflow-init
-docker compose up -d
+docker compose up --scale airflow-worker=3 -d
+(si borraste la DB, entonces:
+    docker exec -it django-backend bash
+    python manage.py migrate
+    python manage.py createsuperuser
+)
 ```
 
 ---

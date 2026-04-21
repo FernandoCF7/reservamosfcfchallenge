@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 from pathlib import Path
 import os
+from celery.schedules import crontab
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -79,13 +80,13 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME'),
-        'USER': os.getenv('DB_USER'),
-        'PASSWORD': os.getenv('DB_PASSWORD'),
-        'HOST': os.getenv('DB_HOST'),
+        'NAME': os.getenv('ETL_DB_NAME'),
+        'USER': os.getenv('ETL_DB_USER'),
+        'PASSWORD': os.getenv('ETL_DB_PASSWORD'),
+        'HOST': os.getenv('ETL_DB_HOST'),
         'PORT': '5432',
         'OPTIONS': {
-            'options': f"-c search_path={os.getenv('DB_SCHEMA')}"
+            'options': f"-c search_path={os.getenv('DJANGO_POSTGRES_SCHEMA')}"
         }
     }
 }
@@ -131,3 +132,13 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+CELERY_BEAT_SCHEDULE = {
+    'sync-airflow-status-every-5-seconds': {
+        'task': 'monitor.tasks.sync_pipeline_status',
+        'schedule': 5.0,  # cada 10 segundos
+    },
+}
+CELERY_BROKER_URL = 'redis://redis:6379/0'
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'

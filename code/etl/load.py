@@ -4,17 +4,20 @@ import pandas as pd
 
 def get_engine():
     return create_engine(
-        f"postgresql+psycopg2://{os.getenv('DB_USER')}:{os.getenv('DB_PASSWORD')}@{os.getenv('DB_HOST')}:5432/{os.getenv('DB_NAME')}"
+        f"postgresql+psycopg2://{os.getenv('ETL_DB_USER')}:{os.getenv('ETL_DB_PASSWORD')}@{os.getenv('ETL_DB_HOST')}:5432/{os.getenv('ETL_DB_NAME')}"
     )
 
 def load_postgres(df: pd.DataFrame):
     engine = get_engine()
 
+    # deduplicates
+    df = df.drop_duplicates(subset=["order_id"])
+
     df.to_sql(
-        "metrics_daily",
+        "sales_raw",
         engine,
-        schema=f"{os.getenv('DB_SCHEMA')}",
-        if_exists="replace",
+        schema=f"{os.getenv('ETL_DB_RAW_SCHEMA')}",
+        if_exists="append",
         index=False
     )
 

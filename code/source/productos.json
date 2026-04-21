@@ -1,0 +1,62 @@
+[
+  {
+    "product_id": "P10",
+    "product_name": "Laptop Básica",
+    "category": "Electrónica",
+    "subcategory": "Computadoras",
+    "brand": "TechPro",
+    "cost": 800,
+    "price": 1200,
+    "active": true
+  },
+  {
+    "product_id": "P11",
+    "product_name": "Smartphone Lite",
+    "category": "Electrónica",
+    "subcategory": "Celulares",
+    "brand": "MobileX",
+    "cost": 200,
+    "price": 350,
+    "active": true
+  },
+  {
+    "product_id": "P12",
+    "product_name": "Audífonos Bluetooth",
+    "category": "Electrónica",
+    "subcategory": "Audio",
+    "brand": "SoundMax",
+    "cost": 50,
+    "price": 120,
+    "active": true
+  },
+  {
+    "product_id": "P13",
+    "product_name": "Teclado Mecánico",
+    "category": "Accesorios",
+    "subcategory": "Periféricos",
+    "brand": "KeyPro",
+    "cost": 70,
+    "price": 150,
+    "active": true
+  },
+  {
+    "product_id": "P14",
+    "product_name": "Mouse Gamer",
+    "category": "Accesorios",
+    "subcategory": "Periféricos",
+    "brand": "ClickX",
+    "cost": 30,
+    "price": 80,
+    "active": true
+  },
+  {
+    "product_id": "P15",
+    "product_name": "Monitor 24 pulgadas",
+    "category": "Electrónica",
+    "subcategory": "Pantallas",
+    "brand": "ViewTech",
+    "cost": 150,
+    "price": 300,
+    "active": true
+  }
+]

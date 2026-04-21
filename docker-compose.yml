@@ -1,34 +1,45 @@
-services:
+x-airflow-common-env: &airflow-common-env
+  AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+  AIRFLOW__CORE__PARALLELISM: 8
+  AIRFLOW__CORE__DAG_CONCURRENCY: 4
+  AIRFLOW__CORE__MAX_ACTIVE_TASKS_PER_DAG: 4
+  AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
+  AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://${AIRFLOW_POSTGRES_USER}:${AIRFLOW_POSTGRES_PASSWORD}@pgdb:5432/${AIRFLOW_POSTGRES_DB}
+  AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_POSTGRES_USER}:${AIRFLOW_POSTGRES_PASSWORD}@pgdb:5432/${AIRFLOW_POSTGRES_DB}?options=-csearch_path=${AIRFLOW_POSTGRES_SCHEMA}
+  AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session
+  PYTHONPATH: /opt/airflow/code
 
+services:
   etl:
     build: ./code
     container_name: pyetl
     depends_on:
       - db
     environment:
-      DB_HOST: ${PROJECT_POSTGRES_HOST}
-      DB_USER: ${PROJECT_POSTGRES_USER}
-      DB_PASSWORD: ${PROJECT_POSTGRES_PASSWORD}
-      DB_NAME: ${PROJECT_POSTGRES_DB}
-      DB_SCHEMA: ${PROJECT_POSTGRES_SCHEMA}
+      ETL_DB_HOST: ${ETL_DB_HOST}
+      ETL_DB_USER: ${ETL_DB_USER}
+      ETL_DB_PASSWRD: ${ETL_DB_PASSWORD}
+      ETL_DB_NAME: ${ETL_DB_NAME}
+      ETL_DB_RAW_SCHEMA: ${ETL_DB_RAW_SCHEMA}
     volumes:
       - ./code/:/app
     restart: unless-stopped
 
   django-backend:
     build: ./django
-    container_name: djbackend
+    container_name: django-backend
     ports:
       - "8000:8000"
     depends_on:
       - db
       - airflow-webserver
     environment:
-      DB_HOST: ${PROJECT_POSTGRES_HOST}
-      DB_NAME: ${PROJECT_POSTGRES_DB}
-      DB_USER: ${PROJECT_POSTGRES_USER}
-      DB_PASSWORD: ${PROJECT_POSTGRES_PASSWORD}
-      DB_SCHEMA: ${DJANGO_POSTGRES_SCHEMA}
+      ETL_DB_HOST: ${ETL_DB_HOST}
+      ETL_DB_USER: ${ETL_DB_USER}
+      ETL_DB_PASSWORD: ${ETL_DB_PASSWORD}
+      ETL_DB_NAME: ${ETL_DB_NAME}
+      DJANGO_POSTGRES_SCHEMA: ${DJANGO_POSTGRES_SCHEMA}
+
     volumes:
       - ./django:/app
     restart: unless-stopped
@@ -37,9 +48,9 @@ services:
     image: postgres:17
     container_name: pgdb
     environment:
-      POSTGRES_USER: ${PROJECT_POSTGRES_USER}
-      POSTGRES_DB: ${PROJECT_POSTGRES_DB}
-      POSTGRES_PASSWORD: ${PROJECT_POSTGRES_PASSWORD}
+      POSTGRES_USER: ${ETL_DB_USER}
+      POSTGRES_DB: ${ETL_DB_NAME}
+      POSTGRES_PASSWORD: ${ETL_DB_PASSWORD}
     ports:
       - "5432:5432"
     volumes:
@@ -50,25 +61,19 @@ services:
   airflow-webserver:
     image: apache/airflow:2.9.1
     user: "0:0"
-    container_name: airflow-webserver
     depends_on:
       - db
+      - redis
     environment:
-      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
-      AIRFLOW__CORE__FERNET_KEY: ''
+      <<: *airflow-common-env
+      AIRFLOW__CORE__FERNET_KEY: ${FERNET_KEY}
       AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
       AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_SECRET_KEY}
-      AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_POSTGRES_USER}:${AIRFLOW_POSTGRES_PASSWORD}@pgdb:5432/${AIRFLOW_POSTGRES_DB}?options=-csearch_path=${AIRFLOW_POSTGRES_SCHEMA}
-      DB_HOST: ${PROJECT_POSTGRES_HOST}
-      DB_USER: ${PROJECT_POSTGRES_USER}
-      DB_PASSWORD: ${PROJECT_POSTGRES_PASSWORD}
-      DB_NAME: ${PROJECT_POSTGRES_DB}
-      DB_SCHEMA: ${PROJECT_POSTGRES_SCHEMA}
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/logs:/opt/airflow/logs
       - ./code:/opt/airflow/code
+      - ./shared_tmp:/shared_tmp
     ports:
       - "8080:8080"
     command: webserver
@@ -80,18 +85,12 @@ services:
     depends_on:
       - db
     environment:
-      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      <<: *airflow-common-env
       AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_SECRET_KEY}
-      AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_POSTGRES_USER}:${AIRFLOW_POSTGRES_PASSWORD}@pgdb:5432/${AIRFLOW_POSTGRES_DB}?options=-csearch_path=${AIRFLOW_POSTGRES_SCHEMA}
-      DB_HOST: ${PROJECT_POSTGRES_HOST}
-      DB_USER: ${PROJECT_POSTGRES_USER}
-      DB_PASSWORD: ${PROJECT_POSTGRES_PASSWORD}
-      DB_NAME: ${PROJECT_POSTGRES_DB}
-      DB_SCHEMA: ${PROJECT_POSTGRES_SCHEMA}
     volumes:
       - ./airflow/logs:/opt/airflow/logs
       - ./airflow/dags:/opt/airflow/dags
+      - ./code:/opt/airflow/code
     entrypoint: /bin/bash
     command: >
       -c "
@@ -107,22 +106,79 @@ services:
 
   airflow-scheduler:
     image: apache/airflow:2.9.1
-    
-    container_name: airflow-scheduler
+    user: "0:0"
     depends_on:
       - airflow-webserver
     environment:
-      AIRFLOW__CORE__EXECUTOR: SequentialExecutor
+      <<: *airflow-common-env
       AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW_SECRET_KEY}
-      AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${AIRFLOW_POSTGRES_USER}:${AIRFLOW_POSTGRES_PASSWORD}@pgdb:5432/${AIRFLOW_POSTGRES_DB}?options=-csearch_path=${AIRFLOW_POSTGRES_SCHEMA}
-      DB_HOST: ${PROJECT_POSTGRES_HOST}
-      DB_USER: ${PROJECT_POSTGRES_USER}
-      DB_PASSWORD: ${PROJECT_POSTGRES_PASSWORD}
-      DB_NAME: ${PROJECT_POSTGRES_DB}
-      DB_SCHEMA: ${PROJECT_POSTGRES_SCHEMA}
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/logs:/opt/airflow/logs
       - ./code:/opt/airflow/code
+      - ./shared_tmp:/shared_tmp
     command: scheduler
+  
+  airflow-worker:
+    image: apache/airflow:2.9.1
+    user: "0:0"
+    depends_on:
+      - redis
+      - db
+    environment:
+      <<: *airflow-common-env
+      AIRFLOW__CELERY__WORKER_CONCURRENCY: 2
+      ETL_DB_HOST: ${ETL_DB_HOST}
+      ETL_DB_USER: ${ETL_DB_USER}
+      ETL_DB_PASSWORD: ${ETL_DB_PASSWORD}
+      ETL_DB_NAME: ${ETL_DB_NAME}
+      DJANGO_POSTGRES_SCHEMA: ${DJANGO_POSTGRES_SCHEMA}
+    volumes:
+      - ./airflow/dags:/opt/airflow/dags
+      - ./airflow/logs:/opt/airflow/logs
+      - ./code:/opt/airflow/code
+      - ./shared_tmp:/shared_tmp
+    command: airflow celery worker
+
+  redis:
+    image: redis:7
+    container_name: redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  celery-beat:
+    build: ./django
+    container_name: celery-beat
+    depends_on:
+      - redis
+      - django-backend
+    command: celery -A config beat -l info
+    volumes:
+      - ./django:/app
+    environment:
+      DB_HOST: ${ETL_DB_HOST}
+      DB_NAME: ${ETL_DB_NAME}
+      DB_USER: ${ETL_DB_USER}
+      DB_PASSWORD: ${ETL_DB_PASSWORD}
+      DJANGO_POSTGRES_SCHEMA: ${DJANGO_POSTGRES_SCHEMA}
+      CELERY_BROKER_URL: redis://redis:6379/0
+    restart: unless-stopped
+
+  celery-worker:
+    build: ./django
+    container_name: celery-worker
+    depends_on:
+      - redis
+      - django-backend
+    command: celery -A config worker -l info
+    volumes:
+      - ./django:/app
+    environment:
+      DB_HOST: ${ETL_DB_HOST}
+      DB_NAME: ${ETL_DB_NAME}
+      DB_USER: ${ETL_DB_USER}
+      DB_PASSWORD: ${ETL_DB_PASSWORD}
+      DJANGO_POSTGRES_SCHEMA: ${DJANGO_POSTGRES_SCHEMA}
+      CELERY_BROKER_URL: redis://redis:6379/0
+    restart: unless-stopped

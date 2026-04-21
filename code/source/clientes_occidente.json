@@ -1,0 +1,20 @@
+[
+    {
+        "customer_id": "C013",
+        "name": "Andrés Molina",
+        "segment": "Retail",
+        "region": "OCCIDENTE"
+    },
+    {
+        "customer_id": "C014",
+        "name": "Valeria Cruz",
+        "segment": "Corporate",
+        "region": "OCCIDENTE"
+    },
+    {
+        "customer_id": "C015",
+        "name": "Jorge Navarro",
+        "segment": "SMB",
+        "region": "OCCIDENTE"
+    }
+]

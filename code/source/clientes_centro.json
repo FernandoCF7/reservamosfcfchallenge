@@ -1,0 +1,26 @@
+[
+  {
+    "customer_id": "C009",
+    "name": "Miguel Castro",
+    "segment": "Corporate",
+    "region": "CENTRO"
+  },
+  {
+    "customer_id": "C010",
+    "name": "Elena Vargas",
+    "segment": "Retail",
+    "region": "CENTRO"
+  },
+  {
+    "customer_id": "C011",
+    "name": "Diego Herrera",
+    "segment": "SMB",
+    "region": "CENTRO"
+  },
+  {
+    "customer_id": "C012",
+    "name": "Paula Ríos",
+    "segment": "Retail",
+    "region": "CENTRO"
+  }
+]
