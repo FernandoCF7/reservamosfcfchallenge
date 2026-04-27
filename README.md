@@ -1,69 +1,120 @@
-# Instructivo para ejecutar el proyecto: Challenge — Data engineer (Mid Level)
+# Data Platform — End-to-End ETL Pipeline
 
 ## 🧩 Descripción general
 
-Este proyecto implementa un pipeline de datos completo utilizando:
+Este proyecto implementa una plataforma de datos completa, desde ingestión hasta consumo analítico:
 
-- **Airflow** → Orquestación del pipeline ETL  
-- **Python (ETL)** → Extracción, transformación y carga  
-- **PostgreSQL** → Almacenamiento  
-- **Django** → Backend + UI de monitoreo (tipo CETCIN)  
-- **Docker** → Infraestructura reproducible  
+- **Apache Airflow + Celery** → Orquestación distribuida
+- **Python (ETL)** → Procesamiento de datos
+- **PostgreSQL** → Data Lake + Data Warehouse (multi-schema)
+- **Django** → Backend + monitoreo
+- **Docker Compose** → Infraestructura reproducible
+- **Power BI** → Consumo analítico (externo)
 
 ---
 
-## 🚀 Etapas del proyecto
+## 🏗️ Arquitectura
 
-1. Construcción de infraestructura (Docker)
-2. Ejecución del pipeline de datos (Airflow)
-3. Monitoreo del pipeline (Django UI)
+El sistema sigue una arquitectura moderna de datos en 3 capas:
+
+RAW → STAGING → ANALYTICS
+
+### 🔹 RAW
+- Ingestión incremental desde archivos JSON
+- Datos sin transformar
+- Control de duplicados (PK compuesta)
+
+### 🔹 STAGING
+- Limpieza y normalización
+- Enriquecimiento (ej: `total_amount`)
+- Preparación para modelado dimensional
+
+### 🔹 ANALYTICS
+- Modelo estrella (Star Schema)
+- Dimensiones y tabla de hechos
+- Soporte para BI
+
+---
+
+## 📊 Modelo de datos
+
+### 🔸 Dimensiones
+- `dim_customers` → SCD Type 2 (histórico)
+- `dim_products` → dimensión estática
+
+### 🔸 Hechos
+- `fact_sales`
+  - Llaves surrogate (`customer_key`, `product_key`)
+  - Métricas: cantidad, precio, total
+
+---
+
+## 🔁 Orquestación (Airflow)
+
+Pipeline principal:
+
+RAW (parallel ingestion)
+↓
+STAGING (transformations)
+↓
+DIMENSIONS (SCD2)
+↓
+FACT TABLE
+
+### Características:
+- Procesamiento paralelo por región
+- Re-ejecución segura (idempotencia parcial)
+- Separación por capas
+- Escalable con Celery workers
+
+---
+
+## 🔐 Seguridad (básica)
+
+- Manejo de credenciales vía variables de entorno
+- Separación por schemas (`raw`, `staging`, `analytics`)
+- Preparado para integración con Secrets Manager
+- Enfoque en manejo de datos sensibles
 
 ---
 
 ## 📁 Estructura del proyecto
 
-```
 ├── airflow/
-│   ├── dags/
-│   │   └── etl_pipeline_dag.py
-│   ├── logs/
-│   └── plugins/
+│ ├── dags/
+│ │ └── etl_pipeline_dag.py
+│ ├── logs/
+│ └── plugins/
 ├── code/
-│   ├── etl/
-│   │   ├── __init__.py
-│   │   ├── extract.py
-│   │   ├── transform.py
-│   │   └── load.py
-│   ├── __init__.py
-│   ├── api.py
-│   └── source/
-│       └── events.json
+│ ├── etl/
+│ │ ├── raw.py
+│ │ ├── staging.py
+│ │ ├── dimension.py
+│ │ └── fact.py
+│ └── source/
+│ ├── ventas_.json
+│ ├── customers_.json
+│ └── products.json
+├── django/
 ├── data/
-├── .env
+├── shared_tmp/
 ├── docker-compose.yml
-├── requirements.txt
+├── .env
 └── README.md
-```
+
 
 ---
 
-## ⚠️ Notas de versionado
-
-- `.env` **sí está versionado** (solo para fines de prueba, sin datos sensibles)
-- `data/` **NO se versiona** (volumen de PostgreSQL)
-
----
-
-
-## 🐳 1. Construcción de infraestructura
-
-### 🔹 Levantar el entorno
+## 🐳 1. Levantar infraestructura
 
 ```bash
 docker compose down
-(opcional, borrado fuerte (excepto las carpetas locales)) docker compose down -v --remove-orphans
 docker compose build --no-cache
-sudo rm -rf data
+
+# reset opcional
+docker compose down -v --remove-orphans
+rm -rf data
+
 docker compose up db -d
 docker compose run airflow-init
 docker compose up --scale airflow-worker=3 -d
@@ -74,44 +125,53 @@ docker compose up --scale airflow-worker=3 -d
 )
 ```
 
----
-
-
-
-### 🧠 Arquitectura
-
-Cada componente corre en su propio contenedor:
-
-- `db` → PostgreSQL  
-- `etl` → lógica Python  
-- `airflow-*` → orquestación  
-- `django-backend` → UI + API  
+🌐 2. Accesos
+Airflow UI → http://localhost:8080
+Django → http://localhost:8000
 
 ---
 
-## 🧱 2. Configuración de Django
+▶️ 3. Ejecutar pipeline
+Desde Airflow UI:
 
-### 🔹 Crear proyecto (solo la primera vez)
+Activar y ejecutar el DAG:
 
-```bash
-docker compose run --rm django-backend bash
-```
+etl_pipeline
 
-Dentro del contenedor:
+Desde API:
+curl -X POST "http://localhost:8080/api/v1/dags/etl_pipeline/dagRuns" \
+  -u "airflow:airflow" \
+  -H "Content-Type: application/json" \
+  -d '{}'
 
-```bash
-django-admin startproject config .
-exit
-```
+🧠 Consideraciones de diseño
+✔ Escalabilidad
+CeleryExecutor permite ejecución distribuida
+Workers escalables (--scale airflow-worker=n)
+✔ Idempotencia
+Claves primarias en RAW
+Control parcial de duplicados
+✔ Modelado dimensional
+Uso de surrogate keys
+Implementación de SCD Type 2
+Separación clara entre hechos y dimensiones
+✔ BI Ready
+Modelo optimizado para herramientas como Power BI
+Relaciones entre tablas ya definidas
+🚀 Evolución futura
+Integración con Secrets Manager (Vault / AWS)
+Migración a Kubernetes
+Implementación de Data Quality (Great Expectations)
+Streaming ingestion
+Migración a plataformas como Databricks
+🧪 Nota
 
-Reconstruir imagen:
+Este proyecto fue diseñado como práctica avanzada de ingeniería de datos, simulando un entorno productivo con:
 
-```bash
-docker compose build django-backend
-docker compose up django-backend -d
-```
-
----
+múltiples fuentes
+procesamiento distribuido
+modelado analítico
+consumo BI
 
 ## 🧩 3. Crear app de monitoreo
 
@@ -276,50 +336,6 @@ docker compose up -d
 👉 Esto **NO recrea el proyecto**, solo levanta contenedores existentes.
 
 ---
-
-## 🧠 Notas importantes
-
-- Airflow maneja ejecución del pipeline  
-- Django actúa como:
-  - UI de monitoreo
-  - Control manual de ejecuciones  
-- PostgreSQL usa múltiples schemas:
-  - `airflow`
-  - `analytics`
-  - `backend` (Django)
-
----
-
-
-ejecutar el dag desde consola (ejecutar airflow con su API)
-curl -X POST "http://localhost:8080/api/v1/dags/etl_pipeline/dagRuns" \
-  -u "airflow:airflow" \
-  -H "Content-Type: application/json" \
-  -d '{}'
-
-
-
-
-
-
-
-## 2. Ejecutar airflow desde el sitio web
-
-http://localhost:8080
-
-
-## 2. Ejecutar pipeline de datos
-
-Para realizar la ejecución del 'ETL pipeline' entre al contenedor de python (pyback) y ejecute el programa main.py
-:w
-
-```
-(entrar al contenedor)
-docker exex -it pyback bash
-
-(una vez dentro del contenedor:)
-python main.py
-```
 
 ### Decisiones y explicación del diseño del ETL pipeline 
 
