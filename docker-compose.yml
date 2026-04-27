@@ -18,9 +18,12 @@ services:
     environment:
       ETL_DB_HOST: ${ETL_DB_HOST}
       ETL_DB_USER: ${ETL_DB_USER}
-      ETL_DB_PASSWRD: ${ETL_DB_PASSWORD}
+      ETL_DB_PASSWORD: ${ETL_DB_PASSWORD}
       ETL_DB_NAME: ${ETL_DB_NAME}
       ETL_DB_RAW_SCHEMA: ${ETL_DB_RAW_SCHEMA}
+      ETL_DB_STAGING_SCHEMA: ${ETL_DB_STAGING_SCHEMA}
+      ETL_DB_ANALYTICS_SCHEMA: ${ETL_DB_ANALYTICS_SCHEMA}
+
     volumes:
       - ./code/:/app
     restart: unless-stopped
@@ -133,6 +136,10 @@ services:
       ETL_DB_PASSWORD: ${ETL_DB_PASSWORD}
       ETL_DB_NAME: ${ETL_DB_NAME}
       DJANGO_POSTGRES_SCHEMA: ${DJANGO_POSTGRES_SCHEMA}
+      ETL_DB_RAW_SCHEMA: ${ETL_DB_RAW_SCHEMA}
+      ETL_DB_STAGING_SCHEMA: ${ETL_DB_STAGING_SCHEMA}
+      ETL_DB_ANALYTICS_SCHEMA: ${ETL_DB_ANALYTICS_SCHEMA}
+
     volumes:
       - ./airflow/dags:/opt/airflow/dags
       - ./airflow/logs:/opt/airflow/logs

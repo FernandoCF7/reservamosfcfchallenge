@@ -6,64 +6,23 @@ from airflow.operators.python import PythonOperator
 from airflow.utils.task_group import TaskGroup
 from datetime import datetime
 
-from etl.extract import extract
-from etl.transform import transform
-from etl.load import load_postgres
+from etl.raw import (
+    load_raw_sales
+    , load_raw_customers
+    , load_raw_products
+)
 
-import pandas as pd
+from etl.staging import (
+    transform_sales_to_stg
+    , transform_customers_to_stg
+    , transform_products_to_stg
+)
 
-# --- wrappers for Airflow --- #
-
-def extract_task(path, tmp_raw):
-    df = extract(path)
-    df.to_parquet(tmp_raw)
-
-def transform_task(tmp_raw, tmp_clean):
-    import pandas as pd
-    df = pd.read_parquet(tmp_raw)
-    df_clean = transform(df)
-    df_clean.to_parquet(tmp_clean)
-
-def load_task(tmp_clean):
-    import pandas as pd
-    df = pd.read_parquet(tmp_clean)
-    load_postgres(df)
-
-# --- DAG --- #
-
-def build_process(group_id):
-    
-    idx_files = ["1", "2", "3", "4"]
-
-    with TaskGroup(group_id=group_id) as tg:
-
-        for suffix in idx_files:
-
-            DATA_PATH = f"/opt/airflow/code/source/events_{suffix}.json"
-            TMP_RAW = f"/shared_tmp/raw_{group_id}_{suffix}.parquet"
-            TMP_CLEAN = f"/shared_tmp/clean_{group_id}_{suffix}.parquet"
-
-            extract_t = PythonOperator(
-                task_id=f"extract_{suffix}",
-                python_callable=extract_task,
-                op_args=[DATA_PATH, TMP_RAW]
-            )
-
-            transform_t = PythonOperator(
-                task_id=f"transform_{suffix}",
-                python_callable=transform_task,
-                op_args=[TMP_RAW, TMP_CLEAN]
-            )
-
-            load_t = PythonOperator(
-                task_id=f"load_{suffix}",
-                python_callable=load_task,
-                op_args=[TMP_CLEAN]
-            )
-
-            extract_t >> transform_t >> load_t
-
-    return tg
+from etl.dimension import (
+    load_dim_customers_scd2
+    , load_dim_products_scd2
+    , load_fact_sales
+)
 
 with DAG(
     dag_id="etl_pipeline",
@@ -74,10 +33,108 @@ with DAG(
     tags=["etl", "celery", "parallel"]
 ) as dag:
 
-    process_A = build_process("proceso_A")
-    process_B = build_process("proceso_B")
-    process_C = build_process("proceso_C")
-    process_D = build_process("proceso_D")
+    # -------------------------
+    # RAW
+    # -------------------------
 
-    # dependences
-    process_A >> process_B
+    sales_files = [
+        ("ventas_norte.json", "norte")
+        , ("ventas_centro.json", "centro")
+        , ("ventas_occidente.json", "occidente")
+        , ("ventas_sur.json", "sur")
+    ]
+
+    raw_sales_tasks = []
+
+    for file_name, label in sales_files:
+
+        t = PythonOperator(
+            task_id=f"load_raw_sales_{label}",
+            python_callable=load_raw_sales,
+            op_args=[f"/opt/airflow/code/source/{file_name}", label]
+        )
+        raw_sales_tasks.append(t)
+    
+    customer_files = [
+        ("clientes_norte.json", "norte")
+        , ("clientes_centro.json", "centro")
+        , ("clientes_occidente.json", "occidente")
+        , ("clientes_sur.json", "sur"),
+    ]
+
+    raw_customer_tasks = []
+
+    for file_name, label in customer_files:
+        t = PythonOperator(
+            task_id=f"load_raw_customers_{label}",
+            python_callable=load_raw_customers,
+            op_args=[f"/opt/airflow/code/source/{file_name}", label]
+        )
+        raw_customer_tasks.append(t)
+    
+    raw_products_task = PythonOperator(
+        task_id="load_raw_products",
+        python_callable=load_raw_products,
+        op_args=["/opt/airflow/code/source/productos.json", "productos"]
+    )
+
+
+
+    # -------------------------
+    # STAGING
+    # -------------------------
+    
+    stg_sales = PythonOperator(
+        task_id="stg_sales",
+        python_callable=transform_sales_to_stg
+    )
+    
+    stg_customers = PythonOperator(
+        task_id="stg_customers",
+        python_callable=transform_customers_to_stg
+    )
+    
+    stg_products = PythonOperator(
+        task_id="stg_products",
+        python_callable=transform_products_to_stg
+    )
+
+    # -------------------------
+    # DIMENTION
+    # -------------------------
+
+    dim_customers_task = PythonOperator(
+        task_id="dim_customers_scd2",
+        python_callable=load_dim_customers_scd2
+    )
+
+    dim_products_task = PythonOperator(
+        task_id="dim_products_scd2",
+        python_callable=load_dim_products_scd2
+    )
+
+    # -------------------------
+    # FACT
+    # -------------------------
+
+    fact_sales_task = PythonOperator(
+        task_id="fact_sales",
+        python_callable=load_fact_sales
+    )
+    
+
+    # -------------------------
+    # DEPENDENCE
+    # -------------------------
+
+    # RAW → STAGING
+    raw_sales_tasks >> stg_sales
+    raw_customer_tasks >> stg_customers
+    raw_products_task >> stg_products
+
+    # STAGING → DIM
+    stg_customers >> dim_customers_task
+    stg_products >> dim_products_task
+
+    # ALL --> FACT
+    [stg_sales, dim_customers_task, dim_products_task] >> fact_sales_task

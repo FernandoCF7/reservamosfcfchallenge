@@ -3,24 +3,32 @@
     "customer_id": "C009",
     "name": "Miguel Castro",
     "segment": "Corporate",
-    "region": "CENTRO"
+    "region": "CENTRO",
+    "registration_date": "2026-04-01",
+    "email": "C009@hcentro.com"
   },
   {
     "customer_id": "C010",
     "name": "Elena Vargas",
     "segment": "Retail",
-    "region": "CENTRO"
+    "region": "CENTRO",
+    "registration_date": "2026-04-01",
+    "email": "C010@hcentro.com"
   },
   {
     "customer_id": "C011",
     "name": "Diego Herrera",
     "segment": "SMB",
-    "region": "CENTRO"
+    "region": "CENTRO",
+    "registration_date": "2026-04-01",
+    "email": "C011@hcentro.com"
   },
   {
     "customer_id": "C012",
     "name": "Paula Ríos",
     "segment": "Retail",
-    "region": "CENTRO"
+    "region": "CENTRO",
+    "registration_date": "2026-04-01",
+    "email": "C012@hcentro.com"
   }
 ]

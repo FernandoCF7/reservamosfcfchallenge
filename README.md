@@ -250,7 +250,7 @@ Crear superusuario:
 docker compose exec django-backend python manage.py createsuperuser
 ```
 
-appuser
+adminuser
 123f
 
 ---

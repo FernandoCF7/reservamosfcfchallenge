@@ -3,24 +3,32 @@
         "customer_id": "C005",
         "name": "Carlos Ruiz",
         "segment": "Retail",
-        "region": "SUR"
+        "region": "SUR",
+        "registration_date": "2026-04-01",
+        "email": "C005@hsur.com"
     },
     {
         "customer_id": "C006",
         "name": "Sofía Martínez",
         "segment": "Corporate",
-        "region": "SUR"
+        "region": "SUR",
+        "registration_date": "2026-04-01",
+        "email": "C006@hsur.com"
     },
     {
         "customer_id": "C007",
         "name": "Pedro Sánchez",
         "segment": "SMB",
-        "region": "SUR"
+        "region": "SUR",
+        "registration_date": "2026-04-01",
+        "email": "C007@hsur.com"
     },
     {
         "customer_id": "C008",
         "name": "Lucía Fernández",
         "segment": "Retail",
-        "region": "SUR"
+        "region": "SUR",
+        "registration_date": "2026-04-01",
+        "email": "C008@hsur.com"
     }
 ]
